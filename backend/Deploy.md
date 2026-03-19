@@ -134,8 +134,8 @@ gcloud run deploy vaani-backend \
 After deploy, copy the Cloud Run service URL and set it in `app/lib/core/constants.dart`:
 
 ```dart
-static const backendUrl = 'https://vaani-backend-xxxx-as.a.run.app';
-static const backendWsUrl = 'wss://vaani-backend-xxxx-as.a.run.app';
+static const backendUrl = 'https://vaani-xxxx-as.a.run.app';
+static const backendWsUrl = 'wss://vaani-xxxx-as.a.run.app';
 ```
 
 Cloud Run terminates TLS, so use `https://` for REST and `wss://` for WebSocket — no self-signed cert handling needed on the client.
@@ -178,7 +178,7 @@ The service account needs the same IAM roles as the Cloud Run setup (step 2 abov
 
 Railway service → **Settings → Networking → Generate Domain**
 
-You'll get a URL like `https://vaani-backend-production.up.railway.app`. Use this as `BACKEND_URL` when building the Flutter app.
+You'll get a URL like `https://vaani-production.up.railway.app`. Use this as `BACKEND_URL` when building the Flutter app.
 
 ### 4. Deploy
 
@@ -197,7 +197,7 @@ railway up
 
 ```bash
 flutter build apk \
-  --dart-define=BACKEND_URL=https://vaani-backend-production.up.railway.app
+  --dart-define=BACKEND_URL=https://vaani-production.up.railway.app
 ```
 
 See `app/lib/core/constants.dart` for full build instructions.

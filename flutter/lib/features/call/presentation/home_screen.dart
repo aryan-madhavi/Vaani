@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:record/record.dart';
-import 'package:flutter_contacts/flutter_contacts.dart';
 
 import '../../auth/data/auth_repository.dart';
 import '../../settings/data/language_repository.dart';
@@ -36,19 +35,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Future<void> _requestPermissions() async {
     await AudioRecorder().hasPermission();
-    await FlutterContacts.requestPermission(readonly: true);
     await FirebaseMessaging.instance.requestPermission();
+    // Contacts permission is requested inside contactsProvider itself.
   }
 
   Future<void> _storeFcmToken() async {
-    final token = await FirebaseMessaging.instance.getToken();
-    if (token == null) return;
-    final user = await ref.read(currentUserProvider.future);
-    if (user == null) return;
-    await ref.read(authRepositoryProvider).updateFcmToken(user.uid, token);
-    FirebaseMessaging.instance.onTokenRefresh.listen((t) {
-      ref.read(authRepositoryProvider).updateFcmToken(user.uid, t);
-    });
+    try {
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token == null) {
+        debugPrint('[fcm] getToken() returned null');
+        return;
+      }
+      final user = await ref.read(currentUserProvider.future);
+      if (user == null) return;
+      await ref.read(authRepositoryProvider).updateFcmToken(user.uid, token);
+      debugPrint('[fcm] Token stored for ${user.uid}');
+      FirebaseMessaging.instance.onTokenRefresh.listen((t) {
+        ref.read(authRepositoryProvider).updateFcmToken(user.uid, t);
+      });
+    } catch (e) {
+      debugPrint('[fcm] Failed to store token: $e');
+    }
   }
 
   // ── Actions ─────────────────────────────────────────────────────────────────

@@ -133,7 +133,7 @@ class AuthRepository {
   Future<void> updateFcmToken(String uid, String token) => _firestore
       .collection(FirestoreCollections.users)
       .doc(uid)
-      .update({'fcmToken': token});
+      .set({'fcmToken': token}, SetOptions(merge: true));
 
   /// Mark the user as onboarded after language selection.
   Future<void> markOnboarded(String uid) => _firestore

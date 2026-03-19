@@ -1,4 +1,4 @@
-package com.carbonari.auto_call_translate
+package com.carbonari.vaani
 
 import io.flutter.embedding.android.FlutterActivity
 
