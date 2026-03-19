@@ -92,6 +92,7 @@ class CallTranslateApp extends ConsumerWidget {
 
     return MaterialApp.router(
       title: 'Vaani',
+      debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       routerConfig: router,
