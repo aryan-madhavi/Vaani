@@ -41,32 +41,58 @@ router.post('/session', requireAuth, async (req, res) => {
   const sessionId = createSession({ callerUid, receiverUid });
 
   // Send FCM push to the receiver so they are notified even when the app is
-  // backgrounded or closed. The Firestore stream handles the actual call
-  // signalling once the app comes to the foreground.
+  // backgrounded or closed. The notification block makes the OS display a
+  // system notification automatically — data-only messages are silent.
   try {
-    const receiverDoc = await admin
-      .firestore()
-      .collection('users')
-      .doc(receiverUid)
-      .get();
+    const [receiverDoc, callerDoc] = await Promise.all([
+      admin.firestore().collection('users').doc(receiverUid).get(),
+      admin.firestore().collection('users').doc(callerUid).get(),
+    ]);
+
     const fcmToken = receiverDoc.data()?.fcmToken;
+    const callerName = callerDoc.data()?.displayName || callerDoc.data()?.phoneNumber || 'Someone';
+
     if (fcmToken) {
       await admin.messaging().send({
         token: fcmToken,
+        // data payload is available in all app states (foreground, background, terminated)
         data: {
           type: 'incoming_call',
           sessionId,
           callerUid,
+          callerName,
+        },
+        // notification block tells the OS to show a system notification when
+        // the app is in background or terminated — without this the message
+        // arrives silently and the user never sees it.
+        notification: {
+          title: 'Incoming Call',
+          body: `${callerName} is calling you`,
         },
         android: {
           priority: 'high',
+          notification: {
+            channelId: 'incoming_calls',
+            priority: 'max',
+            defaultSound: true,
+            defaultVibrateTimings: true,
+            tag: 'incoming_call',
+          },
         },
         apns: {
-          payload: { aps: { contentAvailable: true } },
+          payload: {
+            aps: {
+              alert: {
+                title: 'Incoming Call',
+                body: `${callerName} is calling you`,
+              },
+              sound: 'default',
+            },
+          },
           headers: { 'apns-priority': '10' },
         },
       });
-      console.log(`[fcm] Notified ${receiverUid} of incoming call`);
+      console.log(`[fcm] Notified ${receiverUid} of incoming call from ${callerName}`);
     } else {
       console.warn(`[fcm] No FCM token for receiver ${receiverUid}`);
     }

@@ -11,6 +11,9 @@ import 'features/settings/data/language_repository.dart';
 import 'firebase_options.dart';
 
 /// Background FCM handler — must be a top-level function.
+/// Called when a data-only message arrives while the app is in background/terminated.
+/// With a notification block in the FCM payload the OS shows the notification
+/// automatically, so we only need Firebase to be initialized here.
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -21,13 +24,26 @@ Future<void> main() async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  // If the app was launched by tapping an FCM notification, bring it straight
-  // to the home screen so the Firestore incoming-call stream picks it up.
-  final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
-  if (initialMessage?.data['type'] == 'incoming_call') {
-    // Router redirect logic will show the incoming call screen once the
-    // Firestore stream fires — just ensure we land on '/'.
-  }
+  // Create the Android notification channel for incoming calls.
+  // Must match the channelId sent in the FCM payload from the backend.
+  await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+
+  // App launched by tapping an FCM notification (terminated state).
+  // The Firestore incomingCallProvider stream will detect the ringing call
+  // doc and the router will redirect to /call/incoming automatically once
+  // Firebase auth restores the session — no manual navigation needed.
+  await FirebaseMessaging.instance.getInitialMessage();
+
+  // App brought to foreground by tapping an FCM notification (background state).
+  // Same as above — the Firestore stream is already active, so the router
+  // will have already redirected; nothing extra to do on tap.
+  FirebaseMessaging.onMessageOpenedApp.listen((_) {
+    // Navigation is driven by incomingCallProvider — no action needed here.
+  });
 
   final prefs = await SharedPreferences.getInstance();
 
