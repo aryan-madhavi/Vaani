@@ -18,7 +18,8 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen>
+    with WidgetsBindingObserver {
   String _search = '';
 
   // ── Lifecycle ───────────────────────────────────────────────────────────────
@@ -26,9 +27,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _storeFcmToken();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Refresh the contact list whenever the app comes back to the foreground
+    // so newly-onboarded Vaani users appear without a restart.
+    if (state == AppLifecycleState.resumed) {
+      ref.invalidate(contactsProvider);
+    }
   }
 
   Future<void> _storeFcmToken() async {

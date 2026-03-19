@@ -28,11 +28,12 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <!-- FCM notification channel for incoming calls.
-             channelId must match what the backend sends in android.notification.channelId -->
+        <!-- FCM default notification channel.
+             Must match channelId sent from the backend and the channel
+             auto-created by the firebase_messaging Flutter plugin. -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="incoming_calls" />
+            android:value="fcm_fallback_notification_channel" />
 
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

@@ -45,7 +45,13 @@ class CallController extends AsyncNotifier<CallPhase> {
     if (uid != null) {
       ref.listen(incomingCallProvider(uid), (_, next) {
         next.whenData((signal) {
-          if (signal != null) _handleIncomingSignal(signal);
+          if (signal != null) {
+            _handleIncomingSignal(signal);
+          } else if (state.valueOrNull is IncomingPhase) {
+            // Signal disappeared (caller timed out or cancelled) — clear the screen.
+            ref.read(callEndReasonProvider.notifier).state = 'Caller cancelled';
+            state = const AsyncData(CallPhase.ended(reason: 'Caller cancelled'));
+          }
         });
       });
     }
@@ -136,7 +142,9 @@ class CallController extends AsyncNotifier<CallPhase> {
     _connectingTimer = Timer(const Duration(seconds: 30), () {
       final s = state.valueOrNull;
       if (s is OutgoingPhase || s is ConnectingPhase) {
-        unawaited(_repo.disconnect());
+        // endSession deletes the backend session + sets Firestore status:'ended'
+        // so the receiver's incomingCallProvider stream clears and their UI resets.
+        unawaited(_repo.endSession(sessionId));
         ref.read(callEndReasonProvider.notifier).state = 'Partner did not answer';
         state = const AsyncData(CallPhase.ended(reason: 'Partner did not answer'));
       }

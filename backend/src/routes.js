@@ -72,7 +72,9 @@ router.post('/session', requireAuth, async (req, res) => {
         android: {
           priority: 'high',
           notification: {
-            channelId: 'incoming_calls',
+            // Must match a channel that exists on the device.
+            // firebase_messaging Flutter plugin auto-creates this channel.
+            channelId: 'fcm_fallback_notification_channel',
             priority: 'max',
             defaultSound: true,
             defaultVibrateTimings: true,
