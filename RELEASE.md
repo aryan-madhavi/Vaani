@@ -36,7 +36,7 @@ cd ..
 ### 3. Commit and tag
 
 ```bash
-git add flutter/pubspec.yaml
+git add flutter/pubspec.yaml  # never `git add .` — vaani.apk must not be committed
 git commit -m "chore: release v0.2.0"
 git tag v0.2.0
 git push && git push origin v0.2.0
