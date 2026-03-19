@@ -18,7 +18,7 @@ const _androidUrl =
 const _inviteText =
     "Hey! I'm using Vaani for real-time voice translation on calls — "
     "it translates both sides of the call live so we can speak in our own languages.\n\n"
-    "🌐 Website: $_websiteUrl\n\n"
+    "🌐 Website: $_websiteUrl\n"
     "📱 Android: $_androidUrl\n"
     "🍎 iOS: coming soon";
 

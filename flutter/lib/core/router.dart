@@ -22,7 +22,9 @@ class _OutgoingCallRoute extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final phase = ref.watch(callControllerProvider).valueOrNull;
     if (phase is OutgoingPhase) return OutgoingCallScreen(phase: phase);
-    return const HomeScreen();
+    // Don't fall back to HomeScreen — remounting it mid-call triggers
+    // permission dialogs. The router redirect will navigate away within a frame.
+    return const Scaffold(body: Center(child: CircularProgressIndicator()));
   }
 }
 
@@ -42,7 +44,7 @@ class _IncomingCallRoute extends ConsumerWidget {
         ),
       );
     }
-    return const HomeScreen();
+    return const Scaffold(body: Center(child: CircularProgressIndicator()));
   }
 }
 
@@ -52,12 +54,8 @@ class _ActiveCallRoute extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final phase = ref.watch(callControllerProvider).valueOrNull;
     if (phase is ActivePhase) return ActiveCallScreen(phase: phase);
-    if (phase is ConnectingPhase) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-    return const HomeScreen();
+    // ConnectingPhase and any transient state while the router is redirecting.
+    return const Scaffold(body: Center(child: CircularProgressIndicator()));
   }
 }
 

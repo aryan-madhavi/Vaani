@@ -2,7 +2,6 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:record/record.dart';
 
 import '../../auth/data/auth_repository.dart';
 import '../../settings/data/language_repository.dart';
@@ -28,15 +27,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await _requestPermissions();
       await _storeFcmToken();
     });
-  }
-
-  Future<void> _requestPermissions() async {
-    await AudioRecorder().hasPermission();
-    await FirebaseMessaging.instance.requestPermission();
-    // Contacts permission is requested inside contactsProvider itself.
   }
 
   Future<void> _storeFcmToken() async {

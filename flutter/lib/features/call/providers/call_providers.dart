@@ -1,10 +1,10 @@
 import 'dart:async';
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/call_repository.dart';
 import '../domain/call_state.dart';
+import '../../auth/data/auth_repository.dart';
 import '../../settings/data/language_repository.dart';
 
 // ── Transcript list ────────────────────────────────────────────────────────────
@@ -32,11 +32,16 @@ class CallController extends AsyncNotifier<CallPhase> {
 
   @override
   Future<CallPhase> build() async {
-    // Read the UID directly from FirebaseAuth instead of watching a reactive
-    // provider. Watching currentUserProvider causes build() to re-run on any
-    // Firebase auth event (e.g. the token refresh triggered inside connect()),
-    // which would reset state back to idle mid-call.
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    // Await the first resolved auth state. On a cold start Firebase needs a
+    // moment to restore the previous session; reading currentUser synchronously
+    // returns null and the incoming-call listener is never set up — which is
+    // why the first call after login requires an app restart to work.
+    //
+    // We use ref.read(...future) NOT ref.watch so that build() does NOT re-run
+    // on subsequent auth events (e.g. the token refresh inside connect()),
+    // which would reset state to idle mid-call.
+    final firebaseUser = await ref.read(authStateProvider.future);
+    final uid = firebaseUser?.uid;
     if (uid != null) {
       ref.listen(incomingCallProvider(uid), (_, next) {
         next.whenData((signal) {
@@ -125,6 +130,18 @@ class CallController extends AsyncNotifier<CallPhase> {
   }
 
   Future<void> _connectWs(String sessionId, String lang) async {
+    // Start the timeout BEFORE connecting so it fires even if connect() hangs
+    // on _channel!.ready (e.g. cold Railway start, no network).
+    _connectingTimer?.cancel();
+    _connectingTimer = Timer(const Duration(seconds: 30), () {
+      final s = state.valueOrNull;
+      if (s is OutgoingPhase || s is ConnectingPhase) {
+        unawaited(_repo.disconnect());
+        ref.read(callEndReasonProvider.notifier).state = 'Partner did not answer';
+        state = const AsyncData(CallPhase.ended(reason: 'Partner did not answer'));
+      }
+    });
+
     await _repo.connect(
       sessionId: sessionId,
       lang: lang,
@@ -149,19 +166,6 @@ class CallController extends AsyncNotifier<CallPhase> {
         }
       },
     );
-
-    // If the partner's WebSocket never arrives, the backend will never send
-    // call_started. Bail out after 30 s for both the caller (OutgoingPhase)
-    // and the receiver (ConnectingPhase).
-    _connectingTimer?.cancel();
-    _connectingTimer = Timer(const Duration(seconds: 30), () {
-      final s = state.valueOrNull;
-      if (s is OutgoingPhase || s is ConnectingPhase) {
-        unawaited(_repo.disconnect());
-        ref.read(callEndReasonProvider.notifier).state = 'Partner did not answer';
-        state = const AsyncData(CallPhase.ended(reason: 'Partner did not answer'));
-      }
-    });
   }
 
   Future<void> _handlePartnerLeft(String sessionId) async {

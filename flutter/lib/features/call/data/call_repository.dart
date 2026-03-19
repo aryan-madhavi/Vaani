@@ -124,6 +124,10 @@ class CallRepository {
     required TranscriptCallback onTranscript,
     required PhaseCallback onPhase,
   }) async {
+    // Clean up any leftover state from a previous call that may have been
+    // aborted (e.g. by the 30 s timeout firing while connect() was hanging).
+    await disconnect();
+
     final idToken = await _auth.currentUser!.getIdToken(true); // force refresh
     final uri = Uri.parse(
       '${AppConstants.backendWsUrl}/ws'
@@ -133,7 +137,13 @@ class CallRepository {
     );
 
     _channel = WebSocketChannel.connect(uri);
-    await _channel!.ready;
+    try {
+      await _channel!.ready;
+    } catch (e) {
+      await _channel?.sink.close();
+      _channel = null;
+      rethrow;
+    }
 
     _wsSub = _channel!.stream.listen(
       (message) {
@@ -157,6 +167,9 @@ class CallRepository {
   Future<void> _startRecording() async {
     final hasPermission = await _recorder.hasPermission();
     if (!hasPermission) throw Exception('Microphone permission denied');
+
+    // Stop any pre-existing recording session before starting a new one.
+    if (await _recorder.isRecording()) await _recorder.stop();
 
     final audioStream = await _recorder.startStream(
       const RecordConfig(

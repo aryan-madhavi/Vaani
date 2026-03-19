@@ -1,7 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:record/record.dart';
 
 import '../../../core/constants.dart';
 import '../data/auth_repository.dart';
@@ -42,6 +44,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   // toE164() is the shared normaliser from core/constants.dart.
 
+  Future<void> _requestPermissions() async {
+    await AudioRecorder().hasPermission();
+    await FirebaseMessaging.instance.requestPermission();
+  }
+
   // ── Actions ────────────────────────────────────────────────────────────────
 
   Future<void> _sendOtp() async {
@@ -79,6 +86,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         setState(() => _loading = true);
         try {
           await FirebaseAuth.instance.signInWithCredential(credential);
+          await _requestPermissions();
           // Router redirect handles navigation.
         } catch (e) {
           if (mounted) setState(() => _error = e.toString());
@@ -103,6 +111,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       await ref
           .read(authRepositoryProvider)
           .confirmOtp(_verificationId!, code);
+      await _requestPermissions();
       // Router redirect handles navigation.
     } on FirebaseAuthException catch (e) {
       setState(() => _error = e.message ?? 'Invalid code');
