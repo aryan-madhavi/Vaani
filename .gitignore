@@ -2,3 +2,4 @@ docs/
 vaani.apk
 *.apk
 release-*.sh
+gh-pages
