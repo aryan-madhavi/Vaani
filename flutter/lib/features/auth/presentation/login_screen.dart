@@ -140,13 +140,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  Text(
-                    'Vaani',
-                    style: GoogleFonts.syne(
-                      fontSize: 36,
-                      fontWeight: FontWeight.w800,
-                      color: c.amber,
-                      letterSpacing: -1,
+                  RichText(
+                    text: TextSpan(
+                      style: GoogleFonts.syne(
+                        color: c.textPrimary,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 22,
+                        letterSpacing: -0.5,
+                      ),
+                      children: [
+                        const TextSpan(text: 'Vaa'),
+                        TextSpan(text: '·', style: TextStyle(color: c.amber)),
+                        const TextSpan(text: 'ni'),
+                      ],
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -158,8 +164,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 48),
 
+                  // ── Error ─────────────────────────────────────────────────
+                  if (_error != null) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: cs.error.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: cs.error.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.error_outline, color: cs.error, size: 18),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _error!,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.error),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ]
+                  else ...[
+                    const SizedBox(height: 48),
+                  ],
+                  
                   // ── Card ──────────────────────────────────────────────────
                   Container(
                     padding: const EdgeInsets.all(24),
@@ -226,31 +260,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                     ),
                   ),
-
-                  // ── Error ─────────────────────────────────────────────────
-                  if (_error != null) ...[
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: cs.error.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: cs.error.withValues(alpha: 0.3)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.error_outline, color: cs.error, size: 18),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              _error!,
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.error),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),

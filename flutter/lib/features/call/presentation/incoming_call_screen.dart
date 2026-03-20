@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme.dart';
+import '../data/contacts_provider.dart';
 import '../domain/call_state.dart';
 import '../providers/call_providers.dart';
 
@@ -47,9 +48,12 @@ class _IncomingCallScreenState extends ConsumerState<IncomingCallScreen>
     final c = AppColorScheme.of(context);
     final signal = widget.signal;
     final controller = ref.read(callControllerProvider.notifier);
-    final initial = signal.callerUid.isNotEmpty
-        ? signal.callerUid[0].toUpperCase()
-        : '?';
+    final contacts    = ref.watch(contactsProvider).valueOrNull ?? [];
+    final contact     = contacts.where((c) => c.uid == signal.callerUid).firstOrNull;
+    final displayName = contact?.displayName.isNotEmpty == true
+        ? contact!.displayName
+        : signal.callerUid;
+    final initial = displayName[0].toUpperCase();
 
     return Scaffold(
       body: SafeArea(
@@ -163,7 +167,17 @@ class _IncomingCallScreenState extends ConsumerState<IncomingCallScreen>
 
             // ── Caller info ──────────────────────────────────────────────────
             Text(
-              signal.callerUid,
+              displayName,
+              style: GoogleFonts.syne(
+                color: c.textPrimary,
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.3,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'is calling you',
               style: GoogleFonts.dmSans(
                 color: c.textDim,
                 fontSize: 13,

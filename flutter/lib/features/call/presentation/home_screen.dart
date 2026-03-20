@@ -109,7 +109,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               letterSpacing: -0.5,
             ),
             children: [
-              const TextSpan(text: 'Va'),
+              const TextSpan(text: 'Vaa'),
               TextSpan(text: '·', style: TextStyle(color: c.amber)),
               const TextSpan(text: 'ni'),
             ],

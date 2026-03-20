@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme.dart';
+import '../data/contacts_provider.dart';
 import '../domain/call_state.dart';
 import '../providers/call_providers.dart';
 
@@ -45,9 +46,12 @@ class _OutgoingCallScreenState extends ConsumerState<OutgoingCallScreen>
   @override
   Widget build(BuildContext context) {
     final c = AppColorScheme.of(context);
-    final initial = widget.phase.receiverUid.isNotEmpty
-        ? widget.phase.receiverUid[0].toUpperCase()
-        : '?';
+    final contacts = ref.watch(contactsProvider).valueOrNull ?? [];
+    final contact  = contacts.where((c) => c.uid == widget.phase.receiverUid).firstOrNull;
+    final displayName = contact?.displayName.isNotEmpty == true
+        ? contact!.displayName
+        : widget.phase.receiverUid;
+    final initial = displayName[0].toUpperCase();
 
     return Scaffold(
       body: SafeArea(
@@ -127,38 +131,28 @@ class _OutgoingCallScreenState extends ConsumerState<OutgoingCallScreen>
 
               // ── Labels ──────────────────────────────────────────────────────
               Text(
-                'Calling…',
+                displayName,
                 style: GoogleFonts.syne(
                   color: c.textPrimary,
-                  fontSize: 26,
+                  fontSize: 24,
                   fontWeight: FontWeight.w700,
                   letterSpacing: -0.5,
                 ),
               ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: c.surface2,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: c.border),
-                ),
-                child: Text(
-                  widget.phase.receiverUid,
-                  style: GoogleFonts.dmSans(
-                    color: c.textDim,
-                    fontSize: 12,
-                  ),
+              const SizedBox(height: 6),
+              Text(
+                'Calling…',
+                style: GoogleFonts.dmSans(
+                  color: c.textDim,
+                  fontSize: 14,
                 ),
               ),
-
-              const SizedBox(height: 16),
-
+              const SizedBox(height: 8),
               Text(
                 'Waiting for them to pick up…',
                 style: GoogleFonts.dmSans(
                   color: c.textMuted,
-                  fontSize: 13,
+                  fontSize: 12,
                 ),
               ),
 

@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme.dart';
 import '../data/call_repository.dart';
+import '../data/contacts_provider.dart';
 import '../domain/call_state.dart';
 import '../providers/call_providers.dart';
 import '../../settings/data/language_repository.dart';
@@ -15,28 +16,40 @@ class ActiveCallScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final c          = AppColorScheme.of(context);
+    final c           = AppColorScheme.of(context);
     final transcripts = ref.watch(transcriptsProvider);
-    final myLang     = ref.watch(languageSettingsProvider).valueOrNull?.lang ?? '';
-    final isSpeaker  = ref.watch(speakerProvider);
+    final myLang      = ref.watch(languageSettingsProvider).valueOrNull?.lang ?? '';
+    final isSpeaker   = ref.watch(speakerProvider);
+    final partnerUid  = ref.watch(callPartnerUidProvider);
+    final contacts    = ref.watch(contactsProvider).valueOrNull ?? [];
+    final partner     = contacts.where((c) => c.uid == partnerUid).firstOrNull;
+    final partnerName = partner?.displayName.isNotEmpty == true
+        ? partner!.displayName
+        : partnerUid ?? 'Unknown';
 
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: RichText(
-          text: TextSpan(
-            style: GoogleFonts.syne(
-              color: c.textPrimary,
-              fontWeight: FontWeight.w800,
-              fontSize: 20,
-              letterSpacing: -0.5,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              partnerName,
+              style: GoogleFonts.syne(
+                color: c.textPrimary,
+                fontWeight: FontWeight.w700,
+                fontSize: 17,
+                letterSpacing: -0.3,
+              ),
             ),
-            children: [
-              const TextSpan(text: 'Va'),
-              TextSpan(text: '·', style: TextStyle(color: c.amber)),
-              const TextSpan(text: 'ni'),
-            ],
-          ),
+            Text(
+              'On call',
+              style: GoogleFonts.dmSans(
+                color: c.textDim,
+                fontSize: 12,
+              ),
+            ),
+          ],
         ),
         actions: [
           // Speaker toggle

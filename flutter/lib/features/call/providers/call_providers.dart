@@ -78,6 +78,7 @@ class CallController extends AsyncNotifier<CallPhase> {
 
   /// Place an outgoing call to [receiverUid].
   Future<void> startCall(String receiverUid) async {
+    ref.read(callPartnerUidProvider.notifier).state = receiverUid;
     try {
       final lang = await _myLang();
       final sessionId = await _repo.createSession(receiverUid, lang);
@@ -93,6 +94,7 @@ class CallController extends AsyncNotifier<CallPhase> {
 
   /// Accept an incoming call.
   Future<void> acceptCall(CallSignal signal) async {
+    ref.read(callPartnerUidProvider.notifier).state = signal.callerUid;
     state = AsyncData(CallPhase.connecting(sessionId: signal.sessionId));
     try {
       await _repo.updateCallStatus(signal.sessionId, 'active');
@@ -196,3 +198,7 @@ final speakerProvider = StateProvider<bool>((ref) => true);
 /// Holds a pending end-of-call reason to show as an alert.
 /// Set when the call ends with a reason; cleared after the dialog is shown.
 final callEndReasonProvider = StateProvider<String?>((ref) => null);
+
+/// UID of the person on the other end of the current/last call.
+/// Set in startCall (receiverUid) and acceptCall (callerUid).
+final callPartnerUidProvider = StateProvider<String?>((ref) => null);
