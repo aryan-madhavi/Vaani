@@ -2,10 +2,12 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../auth/data/auth_repository.dart';
 import '../../settings/data/language_repository.dart';
 import '../../../core/constants.dart';
+import '../../../core/theme.dart';
 import '../data/contacts_provider.dart';
 import '../domain/app_contact.dart';
 import '../providers/call_providers.dart';
@@ -41,8 +43,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Refresh the contact list whenever the app comes back to the foreground
-    // so newly-onboarded Vaani users appear without a restart.
     if (state == AppLifecycleState.resumed) {
       ref.invalidate(contactsProvider);
     }
@@ -51,10 +51,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Future<void> _storeFcmToken() async {
     try {
       final token = await FirebaseMessaging.instance.getToken();
-      if (token == null) {
-        debugPrint('[fcm] getToken() returned null');
-        return;
-      }
+      if (token == null) { debugPrint('[fcm] getToken() returned null'); return; }
       final user = await ref.read(currentUserProvider.future);
       if (user == null) return;
       await ref.read(authRepositoryProvider).updateFcmToken(user.uid, token);
@@ -62,9 +59,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       FirebaseMessaging.instance.onTokenRefresh.listen((t) {
         ref.read(authRepositoryProvider).updateFcmToken(user.uid, t);
       });
-    } catch (e) {
-      debugPrint('[fcm] Failed to store token: $e');
-    }
+    } catch (e) { debugPrint('[fcm] Failed to store token: $e'); }
   }
 
   // ── Actions ─────────────────────────────────────────────────────────────────
@@ -91,76 +86,153 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    final userAsync = ref.watch(currentUserProvider);
+    final c             = AppColorScheme.of(context);
+    final userAsync     = ref.watch(currentUserProvider);
     final settingsAsync = ref.watch(languageSettingsProvider);
     final contactsAsync = ref.watch(contactsProvider);
 
-    final lang = settingsAsync.valueOrNull?.lang ?? '…';
-    final langName = kSupportedLanguages
-        .firstWhere((l) => l.code == lang,
-            orElse: () => kSupportedLanguages.first)
-        .name;
+    final lang = settingsAsync.valueOrNull?.lang ?? '';
+    final langName = lang.isEmpty
+        ? '…'
+        : kSupportedLanguages
+            .firstWhere((l) => l.code == lang, orElse: () => kSupportedLanguages.first)
+            .name;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Vaani'),
+        title: RichText(
+          text: TextSpan(
+            style: GoogleFonts.syne(
+              color: c.textPrimary,
+              fontWeight: FontWeight.w800,
+              fontSize: 22,
+              letterSpacing: -0.5,
+            ),
+            children: [
+              const TextSpan(text: 'Va'),
+              TextSpan(text: '·', style: TextStyle(color: c.amber)),
+              const TextSpan(text: 'ni'),
+            ],
+          ),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.language),
+            icon: const Icon(Icons.language_outlined),
             tooltip: 'My language',
             onPressed: () => context.push('/settings'),
           ),
           IconButton(
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout_outlined),
+            tooltip: 'Sign out',
             onPressed: () => ref.read(authRepositoryProvider).signOut(),
           ),
+          const SizedBox(width: 4),
         ],
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ── User info header ───────────────────────────────────────────────
+          // ── User info strip ───────────────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
             child: userAsync.when(
               loading: () => const SizedBox.shrink(),
               error: (_, __) => const SizedBox.shrink(),
-              data: (user) => Text(
-                '${user?.phoneNumber ?? ''}  ·  $langName',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+              data: (user) => Row(
+                children: [
+                  Text(
+                    user?.phoneNumber ?? '',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: c.textDim,
+                        ),
+                  ),
+                  if (langName.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: c.amberDim,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        langName,
+                        style: GoogleFonts.dmSans(
+                          color: c.amber,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
+                  ],
+                ],
               ),
             ),
           ),
 
+          const SizedBox(height: 12),
+
           // ── Search bar ────────────────────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: TextField(
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Search contacts…',
-                prefixIcon: Icon(Icons.search),
+                prefixIcon: const Icon(Icons.search, size: 20),
                 isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                fillColor: c.surface,
+                filled: true,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: c.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: c.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: c.amber, width: 1.5),
+                ),
               ),
               onChanged: (v) => setState(() => _search = v.toLowerCase()),
             ),
           ),
 
+          const SizedBox(height: 8),
+
           // ── Contacts list ─────────────────────────────────────────────────
           Expanded(
             child: contactsAsync.when(
-              loading: () =>
-                  const Center(child: CircularProgressIndicator()),
+              loading: () => Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(color: c.amber, strokeWidth: 2),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Loading contacts…',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: c.textDim,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
               error: (_, __) => Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.contacts_outlined, size: 48),
+                    Icon(Icons.contacts_outlined, size: 48, color: c.textMuted),
                     const SizedBox(height: 12),
-                    const Text('Could not load contacts'),
-                    const SizedBox(height: 8),
-                    TextButton(
+                    Text(
+                      'Could not load contacts',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: c.textDim,
+                          ),
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton(
                       onPressed: () => ref.invalidate(contactsProvider),
                       child: const Text('Retry'),
                     ),
@@ -203,57 +275,98 @@ class _ContactsList extends StatelessWidget {
                 (c.phoneNumber?.contains(search) ?? false))
             .toList();
 
-    final onApp = filtered.where((c) => c.isOnApp).toList();
+    final onApp    = filtered.where((c) => c.isOnApp).toList();
     final notOnApp = filtered.where((c) => !c.isOnApp).toList();
 
     if (filtered.isEmpty) {
-      return const Center(child: Text('No contacts found.'));
+      return Center(
+        child: Text(
+          'No contacts found.',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppColorScheme.of(context).textDim,
+              ),
+        ),
+      );
     }
 
     final items = <Object>[];
     if (onApp.isNotEmpty) {
-      items.add('On Vaani (${onApp.length})');
+      items.add(_Section('On Vaani', onApp.length));
       items.addAll(onApp);
     }
     if (notOnApp.isNotEmpty) {
-      items.add('Invite to Vaani');
+      items.add(const _Section('Invite to Vaani', null));
       items.addAll(notOnApp);
     }
 
     return ListView.builder(
+      padding: const EdgeInsets.only(bottom: 24),
       itemCount: items.length,
       itemBuilder: (_, i) {
         final item = items[i];
-        if (item is String) return _SectionHeader(item);
+        if (item is _Section) return _SectionHeader(item);
         final contact = item as AppContact;
-        return ContactTile(
-          contact: contact,
-          onCall: () => onCall(contact),
-        );
+        return ContactTile(contact: contact, onCall: () => onCall(contact));
       },
     );
   }
 }
 
-// ── Section header ─────────────────────────────────────────────────────────────
+class _Section {
+  const _Section(this.title, this.count);
+  final String title;
+  final int? count;
+}
 
 class _SectionHeader extends StatelessWidget {
-  const _SectionHeader(this.title);
-  final String title;
+  const _SectionHeader(this.section);
+  final _Section section;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      child: Text(
-        title,
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.5,
+    final c = AppColorScheme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+      child: Row(
+        children: [
+          Container(
+            width: 3,
+            height: 14,
+            decoration: BoxDecoration(
+              color: c.amber,
+              borderRadius: BorderRadius.circular(2),
             ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            section.title.toUpperCase(),
+            style: GoogleFonts.dmSans(
+              color: c.textDim,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.8,
+            ),
+          ),
+          if (section.count != null) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+              decoration: BoxDecoration(
+                color: c.amberDim,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '${section.count}',
+                style: GoogleFonts.dmSans(
+                  color: c.amber,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

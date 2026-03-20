@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/theme.dart';
 import '../domain/app_contact.dart';
 
-// Website Url 
-const _websiteUrl = 
+// Website URL
+const _websiteUrl =
     'https://aryan-madhavi.github.io/Vaani/';
 
 // Download links shown in the invite message.
@@ -34,39 +36,53 @@ class ContactTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final c = AppColorScheme.of(context);
+    final isOnApp = contact.isOnApp;
 
     return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: contact.isOnApp ? cs.primary : Colors.grey.shade300,
-        child: Text(
-          contact.displayName.isNotEmpty
-              ? contact.displayName[0].toUpperCase()
-              : '?',
-          style: TextStyle(
-            color: contact.isOnApp ? cs.onPrimary : Colors.grey.shade700,
-          ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
+      leading: _Avatar(contact: contact),
+      title: Text(
+        contact.displayName,
+        style: GoogleFonts.dmSans(
+          color: c.textPrimary,
+          fontWeight: FontWeight.w500,
+          fontSize: 15,
         ),
       ),
-      title: Text(contact.displayName),
-      subtitle: Text(
-        contact.isOnApp ? 'On Vaani' : (contact.phoneNumber ?? ''),
-        style: TextStyle(
-          color: contact.isOnApp ? cs.primary : null,
-          fontSize: 12,
-        ),
-      ),
-      trailing: contact.isOnApp
-          ? IconButton(
-              icon: const Icon(Icons.call),
-              color: cs.primary,
-              tooltip: 'Translate call',
-              onPressed: onCall,
+      subtitle: isOnApp
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: c.mint,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  'On Vaani',
+                  style: GoogleFonts.dmSans(
+                    color: c.mint,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             )
-          : TextButton(
-              onPressed: () => _showInviteSheet(context),
-              child: const Text('Invite'),
+          : Text(
+              contact.phoneNumber ?? '',
+              style: GoogleFonts.dmSans(
+                color: c.textDim,
+                fontSize: 12,
+              ),
             ),
+      trailing: isOnApp
+          ? _CallButton(onCall: onCall)
+          : _InviteButton(onInvite: () => _showInviteSheet(context)),
     );
   }
 
@@ -74,39 +90,63 @@ class ContactTile extends StatelessWidget {
     showModalBottomSheet<void>(
       context: context,
       builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 8),
-            Text(
-              'Invite ${contact.displayName}',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            ListTile(
-              leading: const CircleAvatar(
-                backgroundColor: Colors.blue,
-                child: Icon(Icons.sms, color: Colors.white, size: 20),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Handle
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColorScheme.of(context).border,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
               ),
-              title: const Text('SMS'),
-              onTap: () {
-                Navigator.pop(context);
-                _sendSms(contact.phoneNumber);
-              },
-            ),
-            ListTile(
-              leading: const CircleAvatar(
-                backgroundColor: Colors.grey,
-                child: Icon(Icons.share, color: Colors.white, size: 20),
+              const SizedBox(height: 16),
+              Text(
+                'Invite ${contact.displayName}',
+                style: GoogleFonts.syne(
+                  color: AppColorScheme.of(context).textPrimary,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-              title: const Text('More…'),
-              onTap: () {
-                Navigator.pop(context);
-                Share.share(_inviteText);
-              },
-            ),
-            const SizedBox(height: 8),
-          ],
+              const SizedBox(height: 4),
+              Text(
+                'Let them know about Vaani',
+                style: GoogleFonts.dmSans(
+                  color: AppColorScheme.of(context).textDim,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 20),
+              _SheetOption(
+                icon: Icons.sms_outlined,
+                label: 'Send SMS',
+                color: const Color(0xFF4CAF50),
+                onTap: () {
+                  Navigator.pop(context);
+                  _sendSms(contact.phoneNumber);
+                },
+              ),
+              const SizedBox(height: 10),
+              _SheetOption(
+                icon: Icons.share_outlined,
+                label: 'More options…',
+                color: AppColorScheme.of(context).textDim,
+                onTap: () {
+                  Navigator.pop(context);
+                  Share.share(_inviteText);
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
         ),
       ),
     );
@@ -117,5 +157,140 @@ class ContactTile extends StatelessWidget {
     final encoded = Uri.encodeComponent(_inviteText);
     final uri = Uri.parse('sms:$phone?body=$encoded');
     if (await canLaunchUrl(uri)) await launchUrl(uri);
+  }
+}
+
+class _Avatar extends StatelessWidget {
+  const _Avatar({required this.contact});
+  final AppContact contact;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColorScheme.of(context);
+    final initial = contact.displayName.isNotEmpty
+        ? contact.displayName[0].toUpperCase()
+        : '?';
+
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        color: contact.isOnApp ? c.amberDim : c.surface2,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: contact.isOnApp ? c.amberGlow : c.border,
+        ),
+      ),
+      child: Center(
+        child: Text(
+          initial,
+          style: GoogleFonts.syne(
+            color: contact.isOnApp ? c.amber : c.textDim,
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CallButton extends StatelessWidget {
+  const _CallButton({required this.onCall});
+  final VoidCallback onCall;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColorScheme.of(context);
+
+    return GestureDetector(
+      onTap: onCall,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: c.amberDim,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: c.amberGlow),
+        ),
+        child: Icon(Icons.call, color: c.amber, size: 20),
+      ),
+    );
+  }
+}
+
+class _InviteButton extends StatelessWidget {
+  const _InviteButton({required this.onInvite});
+  final VoidCallback onInvite;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColorScheme.of(context);
+
+    return GestureDetector(
+      onTap: onInvite,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: c.border),
+        ),
+        child: Text(
+          'Invite',
+          style: GoogleFonts.dmSans(
+            color: c.textDim,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SheetOption extends StatelessWidget {
+  const _SheetOption({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColorScheme.of(context);
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: c.surface2,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: c.border),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(width: 14),
+            Text(
+              label,
+              style: GoogleFonts.dmSans(
+                color: c.textPrimary,
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

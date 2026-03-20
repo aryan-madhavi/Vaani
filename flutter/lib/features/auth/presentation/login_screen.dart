@@ -3,9 +3,11 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:record/record.dart';
 
 import '../../../core/constants.dart';
+import '../../../core/theme.dart';
 import '../data/auth_repository.dart';
 
 /// Two-step phone auth screen.
@@ -24,12 +26,11 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   // ── State ──────────────────────────────────────────────────────────────────
   final _phoneCtrl = TextEditingController();
-  final _otpCtrl = TextEditingController();
-  bool _loading = false;
+  final _otpCtrl   = TextEditingController();
+  bool _loading    = false;
   String? _error;
 
-  // Moves to OTP step once the SMS has been sent.
-  bool _otpSent = false;
+  bool _otpSent          = false;
   String? _verificationId;
   int? _resendToken;
 
@@ -41,8 +42,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
-
-  // toE164() is the shared normaliser from core/constants.dart.
 
   Future<void> _requestPermissions() async {
     await AudioRecorder().hasPermission();
@@ -57,10 +56,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       setState(() => _error = 'Enter a valid phone number');
       return;
     }
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+    setState(() { _loading = true; _error = null; });
 
     await ref.read(authRepositoryProvider).sendOtp(
       phone,
@@ -68,26 +64,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         if (!mounted) return;
         setState(() {
           _verificationId = verificationId;
-          _resendToken = resendToken;
-          _otpSent = true;
-          _loading = false;
+          _resendToken    = resendToken;
+          _otpSent        = true;
+          _loading        = false;
         });
       },
       onFailed: (e) {
         if (!mounted) return;
-        setState(() {
-          _error = e.message ?? 'Failed to send OTP';
-          _loading = false;
-        });
+        setState(() { _error = e.message ?? 'Failed to send OTP'; _loading = false; });
       },
-      // Android SMS Retriever: auto-verify without user typing the code.
       onAutoVerified: (credential) async {
         if (!mounted) return;
         setState(() => _loading = true);
         try {
           await FirebaseAuth.instance.signInWithCredential(credential);
           await _requestPermissions();
-          // Router redirect handles navigation.
         } catch (e) {
           if (mounted) setState(() => _error = e.toString());
         } finally {
@@ -103,16 +94,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       setState(() => _error = 'Enter the 6-digit code');
       return;
     }
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+    setState(() { _loading = true; _error = null; });
     try {
-      await ref
-          .read(authRepositoryProvider)
-          .confirmOtp(_verificationId!, code);
+      await ref.read(authRepositoryProvider).confirmOtp(_verificationId!, code);
       await _requestPermissions();
-      // Router redirect handles navigation.
     } on FirebaseAuthException catch (e) {
       setState(() => _error = e.message ?? 'Invalid code');
     } finally {
@@ -124,165 +109,146 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final c  = AppColorScheme.of(context);
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(32),
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 40),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
+              constraints: const BoxConstraints(maxWidth: 420),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Logo / title
-                  Icon(Icons.translate_rounded,
-                      size: 64, color: cs.primary),
-                  const SizedBox(height: 16),
+                  // ── Brand ─────────────────────────────────────────────────
+                  Center(
+                    child: Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        color: c.amberDim,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: c.amberGlow),
+                      ),
+                      child: Icon(
+                        Icons.translate_rounded,
+                        size: 36,
+                        color: c.amber,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
                   Text(
                     'Vaani',
-                    style: Theme.of(context)
-                        .textTheme
-                        .headlineMedium
-                        ?.copyWith(fontWeight: FontWeight.bold),
+                    style: GoogleFonts.syne(
+                      fontSize: 36,
+                      fontWeight: FontWeight.w800,
+                      color: c.amber,
+                      letterSpacing: -1,
+                    ),
                     textAlign: TextAlign.center,
                   ),
+                  const SizedBox(height: 6),
                   Text(
                     'Call anyone. Speak your language.',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: cs.onSurface.withValues(alpha: .6),
+                          color: c.textDim,
                         ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 48),
 
-                  if (!_otpSent) ...[
-                    // ── Step 1: phone number ───────────────────────────────
-                    Text('Enter your phone number',
-                        style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _phoneCtrl,
-                      keyboardType: TextInputType.phone,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'[0-9+\s\-()]')),
-                      ],
-                      decoration: const InputDecoration(
-                        prefixIcon: Icon(Icons.phone),
-                        hintText: '+91 98765 43210',
-                        border: OutlineInputBorder(),
-                      ),
-                      onSubmitted: (_) => _loading ? null : _sendOtp(),
+                  // ── Card ──────────────────────────────────────────────────
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: c.surface,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: c.border),
                     ),
-                    const SizedBox(height: 20),
-                    FilledButton(
-                      onPressed: _loading ? null : _sendOtp,
-                      child: _loading
-                          ? const SizedBox.square(
-                              dimension: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Send OTP'),
-                    ),
-                  ] else ...[
-                    // ── Step 2: OTP ────────────────────────────────────────
-                    Text(
-                      'We sent a code to\n${toE164(_phoneCtrl.text.trim())}',
-                      style: Theme.of(context).textTheme.titleMedium,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _otpCtrl,
-                      keyboardType: TextInputType.number,
-                      maxLength: 6,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                      ],
-                      decoration: const InputDecoration(
-                        prefixIcon: Icon(Icons.lock_outline),
-                        hintText: '6-digit code',
-                        border: OutlineInputBorder(),
-                        counterText: '',
-                      ),
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineSmall,
-                      onSubmitted: (_) => _loading ? null : _verifyOtp(),
-                    ),
-                    const SizedBox(height: 20),
-                    FilledButton(
-                      onPressed: _loading ? null : _verifyOtp,
-                      child: _loading
-                          ? const SizedBox.square(
-                              dimension: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Verify'),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        TextButton(
-                          onPressed: _loading
-                              ? null
-                              : () => setState(() {
-                                    _otpSent = false;
-                                    _otpCtrl.clear();
-                                    _error = null;
-                                  }),
-                          child: const Text('Change number'),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 280),
+                      transitionBuilder: (child, anim) => FadeTransition(
+                        opacity: anim,
+                        child: SlideTransition(
+                          position: Tween(
+                            begin: const Offset(0, 0.05),
+                            end: Offset.zero,
+                          ).animate(anim),
+                          child: child,
                         ),
-                        // Re-uses the resendToken from the previous sendOtp call
-                        // so Firebase doesn't count this as a fresh SMS quota hit.
-                        TextButton(
-                          onPressed: _loading
-                              ? null
-                              : () async {
-                                  final phone =
-                                      toE164(_phoneCtrl.text.trim());
-                                  setState(() {
-                                    _loading = true;
-                                    _error = null;
-                                  });
-                                  await ref
-                                      .read(authRepositoryProvider)
-                                      .sendOtp(
-                                        phone,
-                                        resendToken: _resendToken,
-                                        onCodeSent:
-                                            (verificationId, resendToken) {
-                                          if (!mounted) return;
-                                          setState(() {
-                                            _verificationId = verificationId;
-                                            _resendToken = resendToken;
-                                            _loading = false;
-                                          });
-                                        },
-                                        onFailed: (e) {
-                                          if (!mounted) return;
-                                          setState(() {
-                                            _error = e.message ??
-                                                'Failed to resend OTP';
-                                            _loading = false;
-                                          });
-                                        },
-                                      );
-                                },
-                          child: const Text('Resend OTP'),
-                        ),
-                      ],
+                      ),
+                      child: _otpSent
+                          ? _OtpStep(
+                              key: const ValueKey('otp'),
+                              phone: toE164(_phoneCtrl.text.trim()),
+                              ctrl: _otpCtrl,
+                              loading: _loading,
+                              resendToken: _resendToken,
+                              verificationId: _verificationId,
+                              onVerify: _verifyOtp,
+                              onChangeNumber: () => setState(() {
+                                _otpSent = false;
+                                _otpCtrl.clear();
+                                _error   = null;
+                              }),
+                              onResend: () async {
+                                final phone = toE164(_phoneCtrl.text.trim());
+                                setState(() { _loading = true; _error = null; });
+                                await ref.read(authRepositoryProvider).sendOtp(
+                                  phone,
+                                  resendToken: _resendToken,
+                                  onCodeSent: (vid, rt) {
+                                    if (!mounted) return;
+                                    setState(() {
+                                      _verificationId = vid;
+                                      _resendToken    = rt;
+                                      _loading        = false;
+                                    });
+                                  },
+                                  onFailed: (e) {
+                                    if (!mounted) return;
+                                    setState(() {
+                                      _error   = e.message ?? 'Failed to resend';
+                                      _loading = false;
+                                    });
+                                  },
+                                );
+                              },
+                            )
+                          : _PhoneStep(
+                              key: const ValueKey('phone'),
+                              ctrl: _phoneCtrl,
+                              loading: _loading,
+                              onSend: _sendOtp,
+                            ),
                     ),
-                  ],
+                  ),
 
-                  // Error message
+                  // ── Error ─────────────────────────────────────────────────
                   if (_error != null) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      _error!,
-                      style: TextStyle(color: cs.error),
-                      textAlign: TextAlign.center,
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: cs.error.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: cs.error.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.error_outline, color: cs.error, size: 18),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _error!,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.error),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ],
@@ -291,6 +257,170 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ── Step widgets ──────────────────────────────────────────────────────────────
+
+class _PhoneStep extends StatelessWidget {
+  const _PhoneStep({super.key, required this.ctrl, required this.loading, required this.onSend});
+
+  final TextEditingController ctrl;
+  final bool loading;
+  final VoidCallback onSend;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColorScheme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          'Enter your mobile number',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'We\'ll send a one-time code to verify',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: c.textDim),
+        ),
+        const SizedBox(height: 20),
+        TextField(
+          controller: ctrl,
+          keyboardType: TextInputType.phone,
+          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9+\s\-()]'))],
+          style: GoogleFonts.dmSans(fontSize: 16, color: c.textPrimary, letterSpacing: 0.5),
+          decoration: const InputDecoration(
+            prefixIcon: Icon(Icons.phone_outlined),
+            hintText: '+91 98765 43210',
+          ),
+          onSubmitted: (_) => loading ? null : onSend(),
+        ),
+        const SizedBox(height: 20),
+        FilledButton(
+          onPressed: loading ? null : onSend,
+          child: loading
+              ? SizedBox.square(
+                  dimension: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: c.bg),
+                )
+              : const Text('Send OTP'),
+        ),
+      ],
+    );
+  }
+}
+
+class _OtpStep extends StatelessWidget {
+  const _OtpStep({
+    super.key,
+    required this.phone,
+    required this.ctrl,
+    required this.loading,
+    required this.resendToken,
+    required this.verificationId,
+    required this.onVerify,
+    required this.onChangeNumber,
+    required this.onResend,
+  });
+
+  final String phone;
+  final TextEditingController ctrl;
+  final bool loading;
+  final int? resendToken;
+  final String? verificationId;
+  final VoidCallback onVerify;
+  final VoidCallback onChangeNumber;
+  final VoidCallback onResend;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColorScheme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: c.amberDim,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'OTP Sent',
+                style: GoogleFonts.dmSans(
+                  color: c.amber,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Enter the code sent to',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 2),
+        Text(
+          phone,
+          style: GoogleFonts.dmSans(
+            color: c.amber,
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 20),
+        TextField(
+          controller: ctrl,
+          keyboardType: TextInputType.number,
+          maxLength: 6,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          style: GoogleFonts.syne(
+            fontSize: 28,
+            fontWeight: FontWeight.w600,
+            color: c.textPrimary,
+            letterSpacing: 8,
+          ),
+          textAlign: TextAlign.center,
+          decoration: const InputDecoration(
+            hintText: '——————',
+            counterText: '',
+          ),
+          onSubmitted: (_) => loading ? null : onVerify(),
+        ),
+        const SizedBox(height: 20),
+        FilledButton(
+          onPressed: loading ? null : onVerify,
+          child: loading
+              ? SizedBox.square(
+                  dimension: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: c.bg),
+                )
+              : const Text('Verify & Continue'),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            TextButton(
+              onPressed: loading ? null : onChangeNumber,
+              child: const Text('Change number'),
+            ),
+            TextButton(
+              onPressed: loading ? null : onResend,
+              child: const Text('Resend OTP'),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
